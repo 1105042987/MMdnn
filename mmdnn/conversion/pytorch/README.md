@@ -102,7 +102,7 @@ model_object.load_state_dict(torch.load('params.pth'))
          def __init__(self,args):
              # code you need to write
              pass
-        	def forward(self,args):
+         def forward(self,args):
              # code you need to write
              pass
      ```
