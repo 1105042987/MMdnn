@@ -2,7 +2,7 @@
 
 ## mmdnn 安装
 
-```shell
+```bash
 pip install mmdnn
 ```
 

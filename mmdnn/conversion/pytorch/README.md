@@ -52,6 +52,78 @@ IR network structure is saved as [resnet101.pb].
 IR weights are saved as [resnet101.npy].
 ```
 
+### 从非官方模型转化到IR
+
+使用这个工具的时候遇到了一个严重的问题：
+
+因为pytorch一直存在一个bug，这个bug不是pytorch本身的问题，而是pytorch所调用的一个获取相对路径包的问题，这导致导入和加载整个模型（即torch.load()方法）时会因为路径问题无法成功，所以pytorch的工作小组建议用户使用加载模型参数的方式进行。
+
+```python
+import torch
+import torch.nn as nn
+
+# 自定义模型
+class MyModel(nn.Module):
+    def __init__(self,args):
+        pass
+   	def forward(self,args):
+        pass
+
+model_object = MyModel()
+# 【这里略去】
+# 用任意方式去得到参数，如1.进行训练获得参数，2.读取保存的参数，3.空参数用转化后的模型训练
+
+# 全模型的保存与载入
+torch.save(model_object, 'model.pth')
+#-------------------------------------------------------------------
+model = torch.load('model.pth')
+
+# 仅参数的保存与载入（官方推荐）
+torch.save(model_object.state_dict(), 'params.pth')
+#--------------------------------------------------------------------
+model_object.load_state_dict(torch.load('params.pth'))
+```
+
+
+
+但是这个工具在内部使用的方法就是 torch.load('model\_dir.pth')。不过我们发现，对于pytorch自行实现过的网络，便可以通过该方式直接加载模型而不会报错。利用这种方式，可以解决该问题。
+
+- 找到torchvision包的安装位置（如果使用Anaconda进行包管理，则地址如下）
+
+  - **%Anaconda安装地址% / envs / [环境名] / Lib / site-packages / torchvision/** 
+  - base环境：**%Anaconda安装地址% / Lib / site-packages / torchvision/** 
+
+- 在 **./models/** 文件夹中加入自定义的模型结构，命名为"[name].py"（[name]意为自己决定），并用\_\_all\_\_属性注明import内容，如下所示：
+
+  -  ```python
+     import torch.nn as nn
+     __all__ = ["MyModel",]
+     class MyModel(nn.Module):
+         def __init__(self,args):
+             # code you need to write
+             pass
+        	def forward(self,args):
+             # code you need to write
+             pass
+     ```
+
+- 在 **./models/\_\_init\_\_.py** 中加入一行新的代码：
+
+  - ```python
+    from .[name] import *
+    ```
+
+- 到此为止便已经可以使用mmdnn工具转化我们自定义的MyModel模型了，但是依然存在问题，那就是我们保存模型的代码不能再使用之前的方式，而是要替换成如下操作：
+
+  - ```python
+    from torchvision.models import MyModel
+    model_object = MyModel()
+    # 任意手段获取参数
+    torch.save(model_object, 'model.pth')
+    ```
+
+- **特别强调：**只有用上述办法保存的 **model.pth** 文件才能被用于转化。如果在该文件夹内再次出现MyModel的定义，而不使用import方式获得的话，模型加载时依旧会出现找不到模型的问题。
+
 ### Convert models from IR to PyTorch code snippet and weights
 
 You can use following bash command to convert the IR architecture file [*inception_v3.pb*] and weights file [*inception_v3.npy*] to Caffe Python code file[*pytorch_inception_v3.py*] and IR weights file suit for caffe model[*pytorch_inception_v3.npy*]
