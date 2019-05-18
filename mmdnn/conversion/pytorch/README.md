@@ -66,7 +66,7 @@ import torch.nn as nn
 class MyModel(nn.Module):
     def __init__(self,args):
         pass
-   	def forward(self,args):
+    def forward(self,args):
         pass
 
 model_object = MyModel()
